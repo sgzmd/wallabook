@@ -3,8 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	ink "github.com/dennwc/inkview"
+	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Strubbl/wallabago"
@@ -12,7 +15,7 @@ import (
 )
 
 const version = "0.1"
-const defaultConfigJSON = "config.json"
+const defaultConfigJSON = "/mnt/ext1/system/config/wallabook.json"
 
 var debug = flag.Bool("d", false, "get debug output (implies verbose mode)")
 var debugDebug = flag.Bool("dd", false, "get even more debug output like data (implies debug mode)")
@@ -50,13 +53,15 @@ func handleFlags() {
 
 func checkError(err error, op string) {
 	if err != nil {
-		fmt.Printf("Op error %s: %s", op, err)
+		log.Printf("Op error %s: %s", op, err)
 		os.Exit(1)
 	}
 }
 
-func main() {
-	log.SetOutput(os.Stdout)
+func runWallabook(w io.Writer) {
+	ink.InitCerts()
+	os.Chdir(filepath.Dir(os.Args[0]))
+	log.SetOutput(w)
 	handleFlags()
 	// check for config
 	if *verbose {
@@ -64,16 +69,16 @@ func main() {
 	}
 	err := wallabago.ReadConfig(*configJSON)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		os.Exit(1)
 	}
 
 	numArticles, err := wallabago.GetNumberOfTotalArticles()
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		os.Exit(1)
 	}
-	fmt.Printf("There are %d articles", numArticles)
+	log.Printf("There are %d articles", numArticles)
 
 	entries, err := wallabago.GetAllEntries()
 	checkError(err, "GetAllEntries")
@@ -86,11 +91,11 @@ func main() {
 			html := fmt.Sprintf("<h1>%s</h1>\n%s", entry.Title, entry.Content)
 			e.AddSection(html, entry.Title, "", "")
 		} else {
-			fmt.Printf("Skipping %s, too short (%d)\n", entry.Title, len(entry.Content))
+			log.Printf("Skipping %s, too short (%d)\n", entry.Title, len(entry.Content))
 		}
 
 	}
 
-	err = e.Write("result.epub")
+	err = e.Write("/mnt/ext1/Wallabook/result.epub")
 	checkError(err, "WriteEpub")
 }
